@@ -3,47 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mini Discord Chat</title>
+  <title>Mini Discord Chat (with Passwords)</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body { box-sizing: border-box; }
-    .message-bubble { animation: slideIn 0.3s ease-out; }
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-  </style>
 </head>
 <body class="h-full bg-slate-100">
   <main class="h-full flex flex-col max-w-2xl mx-auto p-6">
     <header class="text-center mb-8">
       <h1 class="text-3xl font-bold mb-2">Mini Discord Chat</h1>
-      <p class="text-lg opacity-80">Chat with other local users!</p>
+      <p class="text-lg opacity-80">Now with simple login and passwords!</p>
     </header>
 
-    <!-- Login Section -->
-    <div id="login-screen" class="flex flex-col gap-3 items-center justify-center h-64">
-      <input id="username-input" type="text" placeholder="Enter a username"
-        class="px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-blue-500 focus:outline-none" />
-      <button id="login-btn" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl">
-        Join Chat
-      </button>
+    <!-- Login/Signup -->
+    <div id="auth-screen" class="flex flex-col gap-3 items-center justify-center h-64">
+      <input id="username-input" type="text" placeholder="Username"
+        class="px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-blue-500 focus:outline-none w-64" />
+      <input id="password-input" type="password" placeholder="Password"
+        class="px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-blue-500 focus:outline-none w-64" />
+      <div class="flex gap-2">
+        <button id="login-btn" class="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700">Login</button>
+        <button id="signup-btn" class="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700">Sign Up</button>
+      </div>
+      <p id="auth-message" class="text-sm text-red-500 mt-2"></p>
     </div>
 
-    <!-- Chat Section -->
+    <!-- Chat -->
     <div id="chat-screen" class="hidden flex flex-col flex-1">
       <div class="flex justify-between items-center mb-4">
         <h2 id="welcome-text" class="text-xl font-semibold"></h2>
         <button id="logout-btn" class="text-sm text-red-500 hover:underline">Logout</button>
       </div>
 
-      <!-- Messages Container -->
-      <div id="messages-container" class="flex-1 overflow-y-auto mb-6 space-y-4 bg-white rounded-xl p-4 border border-gray-200">
-      </div>
+      <div id="messages-container" class="flex-1 overflow-y-auto mb-6 space-y-4 bg-white rounded-xl p-4 border border-gray-200"></div>
 
-      <!-- Message Input Form -->
       <form id="message-form" class="flex gap-3 items-end">
-        <textarea id="message-input" placeholder="Type your message here..."
+        <textarea id="message-input" placeholder="Type your message..."
           class="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none resize-none transition-colors duration-200"
           rows="1" maxlength="500"></textarea>
         <button type="submit" id="send-button"
@@ -54,47 +47,73 @@
   </main>
 
   <script>
-    const loginScreen = document.getElementById('login-screen');
+    const authScreen = document.getElementById('auth-screen');
     const chatScreen = document.getElementById('chat-screen');
     const usernameInput = document.getElementById('username-input');
+    const passwordInput = document.getElementById('password-input');
     const loginBtn = document.getElementById('login-btn');
+    const signupBtn = document.getElementById('signup-btn');
     const logoutBtn = document.getElementById('logout-btn');
     const messageForm = document.getElementById('message-form');
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-button');
     const messagesContainer = document.getElementById('messages-container');
     const welcomeText = document.getElementById('welcome-text');
+    const authMessage = document.getElementById('auth-message');
 
-    // Load current user
-    let currentUser = localStorage.getItem('chatUser');
+    let currentUser = localStorage.getItem('currentUser');
+
     if (currentUser) showChat();
 
-    // Login
-    loginBtn.addEventListener('click', () => {
-      const username = usernameInput.value.trim();
-      if (!username) return alert('Please enter a username.');
-      localStorage.setItem('chatUser', username);
+    // Sign up
+    signupBtn.addEventListener('click', () => {
+      const user = usernameInput.value.trim();
+      const pass = passwordInput.value;
+      if (!user || !pass) return showError('Enter a username and password.');
+
+      const users = JSON.parse(localStorage.getItem('users') || '{}');
+      if (users[user]) return showError('Username already exists!');
+
+      users[user] = pass;
+      localStorage.setItem('users', JSON.stringify(users));
+      localStorage.setItem('currentUser', user);
       showChat();
     });
 
-    // Logout
+    // Login
+    loginBtn.addEventListener('click', () => {
+      const user = usernameInput.value.trim();
+      const pass = passwordInput.value;
+      const users = JSON.parse(localStorage.getItem('users') || '{}');
+
+      if (!users[user]) return showError('User not found.');
+      if (users[user] !== pass) return showError('Incorrect password.');
+
+      localStorage.setItem('currentUser', user);
+      showChat();
+    });
+
+    function showError(msg) {
+      authMessage.textContent = msg;
+      setTimeout(() => authMessage.textContent = '', 3000);
+    }
+
     logoutBtn.addEventListener('click', () => {
-      localStorage.removeItem('chatUser');
-      loginScreen.classList.remove('hidden');
+      localStorage.removeItem('currentUser');
+      authScreen.classList.remove('hidden');
       chatScreen.classList.add('hidden');
     });
 
-    // Show chat interface
     function showChat() {
-      currentUser = localStorage.getItem('chatUser');
+      currentUser = localStorage.getItem('currentUser');
       if (!currentUser) return;
-      loginScreen.classList.add('hidden');
+      authScreen.classList.add('hidden');
       chatScreen.classList.remove('hidden');
       welcomeText.textContent = `Logged in as ${currentUser}`;
       loadMessages();
     }
 
-    // Handle new message
+    // Chat handling
     messageInput.addEventListener('input', () => {
       sendButton.disabled = messageInput.value.trim().length === 0;
     });
@@ -106,20 +125,15 @@
       const msg = {
         user: currentUser,
         text,
-        time: new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
-      saveMessage(msg);
+      const messages = JSON.parse(localStorage.getItem('messages') || '[]');
+      messages.push(msg);
+      localStorage.setItem('messages', JSON.stringify(messages));
       messageInput.value = '';
       sendButton.disabled = true;
       loadMessages();
     });
-
-    // Save and load messages
-    function saveMessage(msg) {
-      const messages = JSON.parse(localStorage.getItem('messages') || '[]');
-      messages.push(msg);
-      localStorage.setItem('messages', JSON.stringify(messages));
-    }
 
     function loadMessages() {
       const messages = JSON.parse(localStorage.getItem('messages') || '[]');
